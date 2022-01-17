@@ -1,0 +1,63 @@
+.container {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  height: 50vh;
+  background-color: #ededed;
+}
+
+.show {
+  position: relative;
+  background-color: white;
+  -webkit-box-shadow: 0 2px 6px 2px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 2px 6px 2px rgba(0, 0, 0, 0.1);
+  width: 15rem;
+  height: 20rem;
+  margin: 0 1rem;
+}
+
+.show::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 48px 48px;
+  border-color: transparent transparent #4A90E2 transparent;
+  -webkit-transition: border-width 250ms;
+  transition: border-width 250ms;
+}
+
+.show::before {
+  content: 'Name';
+  font-size: 12px;
+  opacity: 0;
+  color: #fff;
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 2;
+  -webkit-transition: opacity 300ms;
+  transition: opacity 300ms;
+  white-space: pre-wrap;
+  text-align: right;
+}
+
+.show:hover::before {
+  opacity: 1;
+  -webkit-transition: opacity 150ms;
+  transition: opacity 150ms;
+}
+
+.show:hover::after {
+  border-width: 0 0 96px 96px;
+}
+/*# sourceMappingURL=page_corner.css.map */

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=800, initial-scale=1.0">
+    <title>D3js Graph Dashboard</title>
+
+    <!-- Load d3.js & color scale -->
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
+    <link href="/styles/d3_graph_dashboard.css" rel="stylesheet"/>
+</head>
+<body>
+    
+<table border="1">
+<tr>
+    <td>
+        <!-- Create a div where the graph will take place -->
+        <div id="my_dataviz"></div>
+    </td>
+    <td>
+        <div id="plot"></div>
+    </td>
+</tr>
+<tr>
+    <td></td>
+    <td></td>
+</tr>
+
+</table>
+
+
+
+<script>
+
+    // set the dimensions and margins of the graph
+    var width = 250
+        height = 250
+        margin = 50
+    
+    // The radius of the pieplot is half the width or half the height (smallest one). I subtract a bit of margin.
+    var radius = Math.min(width, height) / 2 - margin
+    
+    // append the svg object to the div called 'my_dataviz'
+    var svg = d3.select("#my_dataviz")
+      .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+      .append("g")
+        .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+    
+    // Create dummy data
+    var data = {'FC (19)': 9, EM: 20, PC:30, DE:8, GR:12, f:3, g:7, h:14}
+    
+    // set the color scale
+    var color = d3.scaleOrdinal()
+      .domain(["FC", "EM", "PC", "DE", "GR", "f", "g", "h"])
+      .range(d3.schemeDark2);
+    
+    // Compute the position of each group on the pie:
+    var pie = d3.pie()
+      .sort(null) // Do not sort group by size
+      .value(function(d) {return d.value; })
+    var data_ready = pie(d3.entries(data))
+    
+    // The arc generator
+    var arc = d3.arc()
+      .innerRadius(radius * 0.5)         // This is the size of the donut hole
+      .outerRadius(radius * 0.8)
+    
+    // Another arc that won't be drawn. Just for labels positioning
+    var outerArc = d3.arc()
+      .innerRadius(radius * 0.9)
+      .outerRadius(radius * 0.9)
+    
+    // Build the pie chart: Basically, each part of the pie is a path that we build using the arc function.
+    svg
+      .selectAll('allSlices')
+      .data(data_ready)
+      .enter()
+      .append('path')
+      .attr('d', arc)
+      .attr('fill', function(d){ return(color(d.data.key)) })
+      .attr("stroke", "white")
+      .style("stroke-width", "2px")
+      .style("opacity", 0.7)
+    
+    // Add the polylines between chart and labels:
+    svg
+      .selectAll('allPolylines')
+      .data(data_ready)
+      .enter()
+      .append('polyline')
+        .attr("stroke", "black")
+        .style("fill", "none")
+        .attr("stroke-width", 1)
+        .attr('points', function(d) {
+          var posA = arc.centroid(d) // line insertion in the slice
+          var posB = outerArc.centroid(d) // line break: we use the other arc generator that has been built only for that
+          var posC = outerArc.centroid(d); // Label position = almost the same as posB
+          var midangle = d.startAngle + (d.endAngle - d.startAngle) / 2 // we need the angle to see if the X position will be at the extreme right or extreme left
+          posC[0] = radius * 0.95 * (midangle < Math.PI ? 1 : -1); // multiply by 1 or -1 to put it on the right or on the left
+          return [posA, posB, posC]
+        })
+    
+    // Add the polylines between chart and labels:
+    svg
+      .selectAll('allLabels')
+      .data(data_ready)
+      .enter()
+      .append('text')
+        .text( function(d) { console.log(d.data.key) ; return d.data.key } )
+        .attr('transform', function(d) {
+            var pos = outerArc.centroid(d);
+            var midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
+            pos[0] = radius * 0.99 * (midangle < Math.PI ? 1 : -1);
+            return 'translate(' + pos + ')';
+        })
+        .style('text-anchor', function(d) {
+            var midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
+            return (midangle < Math.PI ? 'start' : 'end')
+        })
+    
+    </script>
+
+<script>
+
+    var margin = { top: 30, right: 10, bottom: 30, left: 300 },
+        width = 600 - margin.left - margin.right,
+        height = 500 - margin.top - margin.bottom;
+    
+    // Percent two area charts can overlap
+    var overlap = 0.6;
+    
+    var formatTime = d3.timeFormat('%I %p');
+    
+    var svg = d3.select('#plot').append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+            .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+    
+    var x = function(d) { return d.time; },
+        xScale = d3.scaleTime().range([0, width]),
+        xValue = function(d) { return xScale(x(d)); },
+        xAxis = d3.axisBottom(xScale).tickFormat(formatTime);
+    
+    var y = function(d) { return d.value; },
+        yScale = d3.scaleLinear(),
+        yValue = function(d) { return yScale(y(d)); };
+    
+    var activity = function(d) { return d.key; },
+        activityScale = d3.scaleBand().range([0, height]),
+        activityValue = function(d) { return activityScale(activity(d)); },
+        activityAxis = d3.axisLeft(activityScale);
+    
+    var area = d3.area()
+        .x(xValue)
+        .y1(yValue);
+    
+    var line = area.lineY1();
+    
+    function parseTime(offset) {
+        var date = new Date(2018, 0, 1); // chose an arbitrary day
+        return d3.timeMinute.offset(date, offset);
+    }
+    
+    function row(d) {
+        return {
+            activity: d.activity,
+            time: parseTime(d.time),
+            value: +d.p_smooth
+        };
+    }
+    
+    d3.tsv('/data/d3_graph_dashboard.tsv', row, function(error, dataFlat) {
+        if (error) throw error;
+    
+        // Sort by time
+        dataFlat.sort(function(a, b) { return a.time - b.time; });
+    
+        var data = d3.nest()
+            .key(function(d) { return d.activity; })
+            .entries(dataFlat);
+        
+        // Sort activities by peak activity time
+        function peakTime(d) {
+            var i = d3.scan(d.values, function(a, b) { return y(b) - y(a); });
+            return d.values[i].time;
+        };
+        data.sort(function(a, b) { return peakTime(b) - peakTime(a); });
+    
+        xScale.domain(d3.extent(dataFlat, x));
+    
+        activityScale.domain(data.map(function(d) { return d.key; }));
+    
+        var areaChartHeight = (1 + overlap) * (height / activityScale.domain().length);
+    
+        yScale
+            .domain(d3.extent(dataFlat, y))
+            .range([areaChartHeight, 0]);
+        
+        area.y0(yScale(0));
+    
+        svg.append('g').attr('class', 'axis axis--x')
+            .attr('transform', 'translate(0,' + height + ')')
+            .call(xAxis);
+    
+        svg.append('g').attr('class', 'axis axis--activity')
+            .call(activityAxis);
+    
+        var gActivity = svg.append('g').attr('class', 'activities')
+                .selectAll('.activity').data(data)
+            .enter().append('g')
+                .attr('class', function(d) { return 'activity activity--' + d.key; })
+                .attr('transform', function(d) {
+                    var ty = activityValue(d) - activityScale.bandwidth() + 5;
+                    return 'translate(0,' + ty + ')';
+                });
+    
+        gActivity.append('path').attr('class', 'area')
+            .datum(function(d) { return d.values; })
+            .attr('d', area);
+        
+        gActivity.append('path').attr('class', 'line')
+            .datum(function(d) { return d.values; })
+            .attr('d', line);
+    });
+    
+    </script>
+</body>
+</html>

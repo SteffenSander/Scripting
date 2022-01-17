@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Wizard Bind Click</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"        crossorigin="anonymous"/>
+
+    <style>
+    .row {
+        margin-top: 30px;
+    }
+    </style>
+</head>
+
+<body>
+    
+<form id="navigation-form" class="wizard-navigation">
+    <div class="container">
+        <div class="row">
+            <input type="text" class="form-control" id="FileName" value="109" />
+        </div>
+
+        <div class="row">
+            <input type="file" class="form-control" id="BankDocument" style="display: none;" />
+        </div>
+
+        <div class="row to-replase">
+            Test-output to replace.
+        </div>
+
+        <div class="row">
+            <a href="#" data-wizard-navigation="click: showAlert.bind($form.FileName.value)" class="btn btn-default col-xs-12 col-sm-12 col-md-12 col-lg-12">showAlert()</a>
+        </div>
+        <div class="row">
+            <a href="#" data-wizard-navigation="click: openFileDialog.bind(#FileName, #BankDocument)" class="btn btn-default col-xs-12 col-sm-12 col-md-12 col-lg-12">openFileDialog(...)</a>
+        </div>
+        <div class="row">
+            <a href="#" data-wizard-navigation="click: testDefaultParam.bind($form.FileName.value)" class="btn btn-default col-xs-12 col-sm-12 col-md-12 col-lg-12">testDefaultParam(...)</a>
+        </div>
+        <div class="row">
+            <a href="#" data-wizard-navigation="click: testDefaultParam.bind($form.FileName.value)" class="btn btn-default col-xs-12 col-sm-12 col-md-12 col-lg-12">testDefaultParam(...)</a>
+        </div>
+
+        <div class="row">
+            <a href="#" class="btn btn-default" id="btnCreate">Neuen Eintrag</a>
+            <table id="tblMasterDetails">
+                <thead>
+                    <th>Test</th>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>test row</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+
+
+
+
+
+    <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    
+    <script src="js/jquery.mvc-wizard-navigation.js"></script>
+    <script src="js/jquery.mvc-master-detail.js"></script>
+    <script>
+        $(".wizard-navigation").initMvcWizardNavigation({});
+        $("#tblMasterDetails").setupMasterDetailTable({
+            idForm:"#navigation-form",
+            includeDataWorker:false,
+            //actionGetDetails: "wizard_navigation_details.html",
+            getSelectionData: null,
+            detailFrameClickHandlerAssigned: function postBinding(idPlaceholder){
+                $("#"+idPlaceholder).applyBinding({
+                    dataBindingAttribute:"data-wizard-navigation"
+                });
+            },
+            actionOnFilterMasterData: null
+        });
+
+        function testDefaultParam(value){
+            console.log("default param: " + value);
+            return "used testDefaultParam called";
+        }
+
+        function showAlert(){
+            console.info("from function showAlert");
+            console.log(arguments);
+        }
+
+        function alertFileName(inputId, fileName, event) {
+            console.info("from function alertFileName");
+            console.log(arguments);
+            $(inputId).val('file input changed! '+ fileName);
+        }
+
+        function openFileDialog(idTargetAndFileInput, event){
+            console.info("from function openFileDialog");
+            console.log(arguments);
+            var targetId   = idTargetAndFileInput[0];// arguments[0][0];
+            var $fileInput = $(idTargetAndFileInput[1]);// $(arguments[0][1]);
+
+            // TODO check/add event-registered attribute
+            if(!$fileInput.data("file-change")){
+                $fileInput.change(function(event){
+                    event.preventDefault();
+                    console.log(event);
+                    var fileName = this.files[0].name;
+                    var idTarget = $(this).data("file-change");
+                    alertFileName(idTarget, fileName, event);
+                    // event.currentTarget.id
+                });
+                $fileInput.data("file-change", targetId);
+            }
+
+            $fileInput.focus().click();
+            //console.log("file selected: "+ $fileInput.files.length);
+        }
+
+        // $file.change(...)
+    </script>
+</body>
+
+</html>
