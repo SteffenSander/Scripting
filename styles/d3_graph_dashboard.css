@@ -1,3 +1,4 @@
+/* JOIPLOT */
 svg {
     display: block;
     margin: 0 auto;
@@ -40,3 +41,8 @@ svg {
 .activity:nth-child(odd) .area {
     fill: #5ca3c1;
 }
+
+.activity.activity--FC .area {
+    fill: rgba(0, 128, 0, .4);
+}
+/* JOIPLOT END */

@@ -132,7 +132,7 @@
         height = 500 - margin.top - margin.bottom;
     
     // Percent two area charts can overlap
-    var overlap = 0.6;
+    var overlap = 0.2; // 0.6
     
     var formatTime = d3.timeFormat('%I %p');
     
@@ -163,7 +163,7 @@
     var line = area.lineY1();
     
     function parseTime(offset) {
-        var date = new Date(2018, 0, 1); // chose an arbitrary day
+        var date = new Date(2019, 0, 1); // chose an arbitrary day
         return d3.timeMinute.offset(date, offset);
     }
     
