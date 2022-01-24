@@ -45,4 +45,9 @@ svg {
 .activity.activity--FC .area {
     fill: rgba(0, 128, 0, .4);
 }
+
+td{
+    padding:0px;
+    margin:0px;
+}
 /* JOIPLOT END */

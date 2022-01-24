@@ -21,12 +21,23 @@
         <div id="my_dataviz"></div>
     </td>
     <td>
-        <div id="plot"></div>
+        <a href="https://stackoverflow.com/questions/21381157/how-to-get-all-minutes-in-a-day"
+        style="text-decoration: none;"    
+        target="_blank">
+<pre>  DateTime.Now.Date
+  Enumerable.Range(0, 1440).Select(i=> ...)
+</pre>
+        </a>
+        <div id="my_dataviz_probly"></div>
     </td>
 </tr>
 <tr>
-    <td></td>
-    <td></td>
+    <td colspan="2"><div id="zoom_plot"><svg width="960" height="500"></svg></div></td>
+</tr>
+
+<tr>
+    <td width="700px"><div id="multi_plot"></div></td>
+    <td><div id="plot"></div></td>
 </tr>
 
 </table>
@@ -34,7 +45,6 @@
 
 
 <script>
-
     // set the dimensions and margins of the graph
     var width = 250
         height = 250
@@ -124,10 +134,9 @@
         })
     
     </script>
-
 <script>
-
-    var margin = { top: 30, right: 10, bottom: 30, left: 300 },
+    "use strict"
+    var margin = { top: 20, right: 10, bottom: 30, left: 200 },
         width = 600 - margin.left - margin.right,
         height = 500 - margin.top - margin.bottom;
     
@@ -136,7 +145,7 @@
     
     var formatTime = d3.timeFormat('%I %p');
     
-    var svg = d3.select('#plot').append('svg')
+    var svgPlot = d3.select('#plot').append('svg')
             .attr('width', width + margin.left + margin.right)
             .attr('height', height + margin.top + margin.bottom)
         .append('g')
@@ -204,14 +213,14 @@
         
         area.y0(yScale(0));
     
-        svg.append('g').attr('class', 'axis axis--x')
+        svgPlot.append('g').attr('class', 'axis axis--x')
             .attr('transform', 'translate(0,' + height + ')')
             .call(xAxis);
     
-        svg.append('g').attr('class', 'axis axis--activity')
+        svgPlot.append('g').attr('class', 'axis axis--activity')
             .call(activityAxis);
     
-        var gActivity = svg.append('g').attr('class', 'activities')
+        var gActivity = svgPlot.append('g').attr('class', 'activities')
                 .selectAll('.activity').data(data)
             .enter().append('g')
                 .attr('class', function(d) { return 'activity activity--' + d.key; })
@@ -230,5 +239,377 @@
     });
     
     </script>
+
+<style>
+    .xAxis line {
+      stroke: #B8B8B8;
+    }
+</style>
+<script>
+    //"use strict"
+    // set the dimensions and margins of the graph
+    var margin = {top: 80, right: 30, bottom: 50, left:110},
+        width = 460 - margin.left - margin.right,
+        height = 400 - margin.top - margin.bottom;
+    
+    // append the svg object to the body of the page
+    var svg = d3.select("#my_dataviz_probly")
+      .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform",
+              "translate(" + margin.left + "," + margin.top + ")");
+    
+    //read data
+    d3.csv("https://raw.githubusercontent.com/zonination/perceptions/master/probly.csv", function(data) {
+    
+      // Get the different categories and count them
+      var categories = ["Almost Certainly", "Very Good Chance", "We Believe", "Likely", "About Even", "Little Chance", "Chances Are Slight", "Almost No Chance" ]
+      var n = categories.length
+    
+      // Compute the mean of each group
+      allMeans = []
+      for (i in categories){
+        currentGroup = categories[i]
+        mean = d3.mean(data, function(d) { return +d[currentGroup] })
+        allMeans.push(mean)
+      }
+    
+      // Create a color scale using these means.
+      var myColor = d3.scaleSequential()
+        .domain([0,100])
+        .interpolator(d3.interpolateViridis);
+    
+      // Add X axis
+      var x = d3.scaleLinear()
+        .domain([-10, 120])
+        .range([ 0, 50 ]);
+      var xAxis = svg.append("g")
+        .attr("class", "xAxis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x).tickValues([0,25, 50, 75, 100]).tickSize(-height) )
+    
+      // Add X axis label:
+      svg.append("text")
+          .attr("text-anchor", "end")
+          .attr("x", width)
+          .attr("y", height + 40)
+          .text("Probability (%)");
+    
+      // Create a Y scale for densities
+      var y = d3.scaleLinear()
+        .domain([0, 0.25])
+        .range([ height, 0]);
+    
+      // Create the Y axis for names
+      var yName = d3.scaleBand()
+        .domain(categories)
+        .range([0, height])
+        .paddingInner(1)
+      svg.append("g")
+        .call(d3.axisLeft(yName).tickSize(0))
+        .select(".domain").remove()
+    
+      // Compute kernel density estimation for each column:
+      var kde = kernelDensityEstimator(kernelEpanechnikov(7), x.ticks(40)) // increase this 40 for more accurate density.
+      var allDensity = []
+      for (i = 0; i < n; i++) {
+          key = categories[i]
+          density = kde( data.map(function(d){  return d[key]; }) )
+          allDensity.push({key: key, density: density})
+      }
+    
+      // Add areas
+      var myCurves = svg.selectAll("areas")
+        .data(allDensity)
+        .enter()
+        .append("path")
+          .attr("class", "myCurves")
+          .attr("transform", function(d){return("translate(0," + (yName(d.key)-height) +")" )})
+          .attr("fill", function(d){
+            grp = d.key ;
+            index = categories.indexOf(grp)
+            value = allMeans[index]
+            return myColor( value  )
+          })
+          .datum(function(d){return(d.density)})
+          .attr("opacity", 0.7)
+          .attr("stroke", "#000")
+          .attr("stroke-width", 0.1)
+          .attr("d",  d3.line()
+              .curve(d3.curveBasis)
+              .x(function(d) { return x(0); })
+              .y(function(d) { return y(d[1]); })
+          )
+    
+      // Animate X axis apparition
+      x.range([ 0, width ]);
+      xAxis
+        .transition()
+        .duration(3000)
+        .call(d3.axisBottom(x).tickValues([0,25, 50, 75, 100]).tickSize(-height) )
+        .select(".domain").remove()
+    
+      // Animate densities apparition
+      myCurves
+        .transition()
+        .duration(5000)
+        .attr("d",  d3.line()
+            .curve(d3.curveBasis)
+            .x(function(d) { return x(d[0]); })
+            .y(function(d) { return y(d[1]); })
+        )
+    
+    })
+    
+    // This is what I need to compute kernel density estimation
+    function kernelDensityEstimator(kernel, X) {
+      return function(V) {
+        return X.map(function(x) {
+          return [x, d3.mean(V, function(v) { return kernel(x - v); })];
+        });
+      };
+    }
+    function kernelEpanechnikov(k) {
+      return function(v) {
+        return Math.abs(v /= k) <= 1 ? 0.75 * (1 - v * v) / k : 0;
+      };
+    }
+</script>
+
+<style>
+    #multi_plot svg {
+        box-sizing: border-box;
+        display: inline-block;
+    }
+</style>
+<script>
+
+    // set the dimensions and margins of the graph
+    var margin = {top: 30, right: 0, bottom: 30, left: 50},
+        width = 210 - margin.left - margin.right,
+        height = 210 - margin.top - margin.bottom;
+    
+    //Read the data
+    d3.csv("https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_dataset/5_OneCatSevNumOrdered.csv", function(data) {
+    
+      // group the data: I want to draw one line per group
+      var sumstat = d3.nest() // nest function allows to group the calculation per level of a factor
+        .key(function(d) { return d.name;})
+        .entries(data);
+    
+      // What is the list of groups?
+      allKeys = sumstat.map(function(d){return d.key})
+    
+      // Add an svg element for each group. The will be one beside each other and will go on the next row when no more room available
+      var svg = d3.select("#multi_plot")
+        .selectAll("uniqueChart")
+        .data(sumstat)
+        .enter()
+        .append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+          .attr("transform",
+                "translate(" + margin.left + "," + margin.top + ")");
+    
+      // Add X axis --> it is a date format
+      var x = d3.scaleLinear()
+        .domain(d3.extent(data, function(d) { return d.year; }))
+        .range([ 0, width ]);
+      svg
+        .append("g")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x).ticks(3));
+    
+      //Add Y axis
+      var y = d3.scaleLinear()
+        .domain([0, d3.max(data, function(d) { return +d.n; })])
+        .range([ height, 0 ]);
+      svg.append("g")
+        .call(d3.axisLeft(y).ticks(5));
+    
+      // color palette
+      var color = d3.scaleOrdinal()
+        .domain(allKeys)
+        .range(['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf','#999999'])
+    
+        // Draw the line
+        svg
+          .append("path")
+            .attr("fill", function(d){ return color(d.key) })
+            .attr("stroke", "none")
+            .attr("d", function(d){
+              return d3.area()
+              .x(function(d) { return x(d.year) })
+              .y0(y(0))
+              .y1(function(d) { return y(+d.n) })
+                (d.values)
+            })
+    
+      // Add titles
+      svg
+        .append("text")
+        .attr("text-anchor", "start")
+        .attr("y", -5)
+        .attr("x", 0)
+        .text(function(d){ return(d.key)})
+        .style("fill", function(d){ return color(d.key) })
+    
+    })
+    </script>
+
+<style>
+    /* #zoom_plot {
+        display: inline-block;
+    } */
+    #zoom_plot svg {
+        width: 960px;
+        height: 500px;
+    }
+
+    #zoom_plot .area {
+        fill: steelblue;
+        clip-path: url(#clip);
+    }
+
+    #zoom_plot .zoom {
+        cursor: move;
+        fill: none;
+        pointer-events: all;
+    }
+</style>
+<script>
+    "use strict"
+    // https://bl.ocks.org/mbostock/34f08d5e11952a80609169b7917d4172 (Brush & Zoom)
+    var svgZoom = d3.select("#zoom_plot svg"),
+        z_margin = {top: 20, right: 20, bottom: 110, left: 40},
+        z_margin2 = {top: 430, right: 20, bottom: 30, left: 40},
+        z_width = +svgZoom.attr("width") - z_margin.left - z_margin.right,
+        z_height = +svgZoom.attr("height") - z_margin.top - z_margin.bottom,
+        z_height2 = +svgZoom.attr("height") - z_margin2.top - z_margin2.bottom;
+    
+    var parseDate = d3.timeParse("%b %Y");
+    
+    var z_x = d3.scaleTime().range([0, z_width]),
+        z_x2 = d3.scaleTime().range([0, z_width]),
+        z_y = d3.scaleLinear().range([z_height, 0]),
+        z_y2 = d3.scaleLinear().range([z_height2, 0]);
+    
+    var z_xAxis = d3.axisBottom(z_x),
+        z_xAxis2 = d3.axisBottom(z_x2),
+        z_yAxis = d3.axisLeft(z_y);
+    
+    var brush = d3.brushX()
+        .extent([[0, 0], [z_width, z_height2]])
+        .on("brush end", brushed);
+    
+    var zoom = d3.zoom()
+        .scaleExtent([1, Infinity])
+        .translateExtent([[0, 0], [z_width, z_height]])
+        .extent([[0, 0], [z_width, z_height]])
+        .on("zoom", zoomed);
+    
+    var z_area = d3.area()
+        .curve(d3.curveMonotoneX)
+        .x(function(d) { return z_x(d.date); })
+        .y0(z_height)
+        .y1(function(d) { return z_y(d.price); });
+    
+    var z_area2 = d3.area()
+        .curve(d3.curveMonotoneX)
+        .x(function(d) { return z_x2(d.date); })
+        .y0(z_height2)
+        .y1(function(d) { return z_y2(d.price); });
+    
+    svgZoom.append("defs").append("clipPath")
+        .attr("id", "clip")
+        .append("rect")
+        .attr("width", z_width)
+        .attr("height", z_height);
+    
+    var focus = svgZoom.append("g")
+        .attr("class", "focus")
+        .attr("transform", "translate(" + z_margin.left + "," + z_margin.top + ")");
+    
+    var context = svgZoom.append("g")
+        .attr("class", "context")
+        .attr("transform", "translate(" + z_margin2.left + "," + z_margin2.top + ")");
+    
+    d3.csv("/data/d3_graph_sp500.csv", type, function(error, data) {
+        if (error) throw error;
+    
+        z_x.domain(d3.extent(data, function(d) { return d.date; }));
+        z_y.domain([0, d3.max(data, function(d) { return d.price; })]);
+        z_x2.domain(z_x.domain());
+        z_y2.domain(z_y.domain());
+    
+        focus.append("path")
+            .datum(data)
+            .attr("class", "area")
+            .attr("d", z_area);
+    
+        focus.append("g")
+            .attr("class", "axis axis--x")
+            .attr("transform", "translate(0," + z_height + ")")
+            .call(z_xAxis);
+    
+        focus.append("g")
+            .attr("class", "axis axis--y")
+            .call(z_yAxis);
+    
+        context.append("path")
+            .datum(data)
+            .attr("class", "area")
+            .attr("d", z_area2);
+    
+        context.append("g")
+            .attr("class", "axis axis--x")
+            .attr("transform", "translate(0," + z_height2 + ")")
+            .call(z_xAxis2);
+    
+        context.append("g")
+            .attr("class", "brush")
+            .call(brush)
+            .call(brush.move, z_x.range());
+    
+        svgZoom.append("rect")
+            .attr("class", "zoom")
+            .attr("width", z_width)
+            .attr("height", z_height)
+            .attr("transform", "translate(" + z_margin.left + "," + z_margin.top + ")")
+            .call(zoom);
+    });
+    
+    function brushed() {
+      if (d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
+      var s = d3.event.selection || z_x2.range();
+      z_x.domain(s.map(z_x2.invert, z_x2));
+      focus.select("#zoom_plot svg .area").attr("d", z_area);
+      focus.select("#zoom_plot svg .axis--x").call(z_xAxis);
+      svgZoom.select("#zoom_plot svg .zoom").call(zoom.transform, d3.zoomIdentity
+          .scale(z_width / (s[1] - s[0]))
+          .translate(-s[0], 0));
+    }
+    
+    function zoomed() {
+      if (d3.event.sourceEvent && d3.event.sourceEvent.type === "brush") return; // ignore zoom-by-brush
+      var t = d3.event.transform;
+      z_x.domain(t.rescaleX(z_x2).domain());
+      focus.select("#zoom_plot svg .area").attr("d", z_area);
+      focus.select("#zoom_plot svg .axis--x").call(z_xAxis);
+      context.select("#zoom_plot svg .brush").call(brush.move, z_x.range().map(t.invertX, t));
+    }
+    
+    function type(d) {
+      d.date = parseDate(d.date);
+      d.price = +d.price;
+      return d;
+    }
+    
+</script>
+    
+
 </body>
 </html>
